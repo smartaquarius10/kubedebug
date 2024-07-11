@@ -1,0 +1,46 @@
+#!/bin/bash
+
+docker_image_exists() {
+    docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "$1"
+}
+
+if ! pgrep -x "gpg-agent" > /dev/null; then
+    eval $(gpg-agent --daemon)
+fi
+
+TWISTCLI_PASSWORD=$(pass twistcli-Password)
+
+DOCKER_IMAGE=$(docker images --format '{{.Repository}}:{{.Tag}}' | fzf --prompt "Select a Docker image: ")
+
+if [ -z "$DOCKER_IMAGE" ]; then
+    read -p "Enter the Docker image string (e.g., image:version): " DOCKER_IMAGE
+fi
+
+if ! docker_image_exists "$DOCKER_IMAGE"; then
+    echo "Docker image not found locally. Pulling $DOCKER_IMAGE..."
+    docker pull "$DOCKER_IMAGE"
+fi
+
+IMAGE_NAME=$(echo "$DOCKER_IMAGE" | awk -F'[:/]' '{print $(NF-1)}')
+VERSION=$(echo "$DOCKER_IMAGE" | awk -F'[:/]' '{print $NF}')
+
+SCAN_OUTPUT_FILE="${IMAGE_NAME}_${VERSION}.json"
+
+echo "Scanning Started"
+
+twistcli images scan --address <address> \
+    --user <username> \
+    --password "$TWISTCLI_PASSWORD" \
+    --output-file "$SCAN_OUTPUT_FILE" \
+    "$DOCKER_IMAGE"
+
+if [ -f "$SCAN_OUTPUT_FILE" ]; then
+    VULNERABILITIES=$(jq -r '.results[].vulnerabilities[] | "\(.id):\(.severity)"' "$SCAN_OUTPUT_FILE")
+    if [ -n "$VULNERABILITIES" ]; then
+        echo "$VULNERABILITIES"
+    else
+        echo "No vulnerabilities found in the scan results."
+    fi
+else
+    echo "Failed to create the scan output file."
+fi

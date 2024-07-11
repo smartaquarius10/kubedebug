@@ -1,0 +1,37 @@
+#!/bin/bash
+
+acr=smartaquarius10/kubelogin:0.0.2
+namespace=default
+
+# Function to delete the debug pod
+cleanup() {
+   if [ -n "$debugpod" ]; then
+       kubectl delete pod $debugpod -n $namespace
+   fi
+}
+
+# Set traps
+trap 'handle_exit' SIGINT
+trap 'cleanup' EXIT
+
+handle_exit() {
+    # Reset the EXIT trap to prevent cleanup from running again
+    trap - EXIT
+    cleanup
+    exit 0
+}
+
+echo
+echo "Login into nodes"
+echo
+
+names=$(kubectl get nodes -o name | sed 's/^node\///')
+debugpod=""
+
+select name in $names; do
+    if [[ -n "$name" ]]; then
+        kubectl debug node/$name -it -n $namespace --image=$acr
+        debugpod=$(kubectl get pods -n $namespace -o name | grep node-debugger-$name | sed 's/^pod\///')
+        break
+    fi
+done

@@ -1,0 +1,53 @@
+#!/bin/bash
+
+#acr=mcr.microsoft.com/dotnet/runtime-deps:6.0
+acr=smartaquarius10/kubelogin:latest
+namespace=default
+
+cleanup() {
+   if [ -n "$debugpod" ]; then
+       kubectl delete pod $debugpod -n $namespace
+   fi
+}
+
+# Set traps
+trap 'handle_exit' SIGINT
+trap 'cleanup' EXIT
+
+handle_exit() {
+    # Reset the EXIT trap to prevent cleanup from running again
+    trap - EXIT
+    cleanup
+    exit 0
+}
+
+
+echo
+echo "Login into nodes"
+echo
+
+# Get node names
+names=$(kubectl get nodes -o name)
+
+# Count the number of nodes
+node_count=$(echo "$names" | wc -l)
+
+# Set the height for fzf dynamically based on the number of nodes
+fzf_height=$((node_count > 10 ? 20 : node_count))
+
+# Use fzf to select a node name
+selected_node=$(echo "$names" | fzf --height $fzf_height --border --prompt="Select a node: ")
+
+if [[ -z "$selected_node" ]]; then
+  echo "No node selected. Exiting..."
+  exit 1
+fi
+
+# Remove "node/" prefix from the selected node
+debugpod=$(echo $selected_node | sed "s/node\///")
+
+# Debug the selected node
+kubectl debug $selected_node -it -n $namespace --image=$acr
+
+# Get the debug pod name
+debugpod=$(kubectl get pods -n $namespace | awk '{print $1}' | grep "node-debugger-$debugpod")

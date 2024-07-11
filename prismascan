@@ -1,7 +1,10 @@
-#!/bin/bash
+#!/bin/bash                                                                                                                                                                                                                                                                                                             get_docker_images() {
+    docker images --format '{{.Repository}}:{{.Tag}}'
+}
 
 docker_image_exists() {
-    docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "$1"
+    local image=$1
+    echo "$DOCKER_IMAGES" | grep -q "$image"
 }
 
 if ! pgrep -x "gpg-agent" > /dev/null; then
@@ -10,26 +13,29 @@ fi
 
 TWISTCLI_PASSWORD=$(pass twistcli-Password)
 
-DOCKER_IMAGE=$(docker images --format '{{.Repository}}:{{.Tag}}' | fzf --prompt "Select a Docker image: ")
+DOCKER_IMAGES=$(get_docker_images)
+IMAGE_COUNT=$(echo "$DOCKER_IMAGES" | wc -l)
+fzf_height=$((IMAGE_COUNT > 10 ? 20 : 10))
+
+DOCKER_IMAGE=$(echo "$DOCKER_IMAGES" | fzf --height "$fzf_height" --border --prompt "Select a Docker image: ")
 
 if [ -z "$DOCKER_IMAGE" ]; then
+    echo
     read -p "Enter the Docker image string (e.g., image:version): " DOCKER_IMAGE
 fi
 
 if ! docker_image_exists "$DOCKER_IMAGE"; then
     echo "Docker image not found locally. Pulling $DOCKER_IMAGE..."
     docker pull "$DOCKER_IMAGE"
+    DOCKER_IMAGES=$(get_docker_images)
 fi
 
 IMAGE_NAME=$(echo "$DOCKER_IMAGE" | awk -F'[:/]' '{print $(NF-1)}')
 VERSION=$(echo "$DOCKER_IMAGE" | awk -F'[:/]' '{print $NF}')
 
 SCAN_OUTPUT_FILE="${IMAGE_NAME}_${VERSION}.json"
-
-echo "Scanning Started"
-
 twistcli images scan --address <address> \
-    --user <username> \
+    --user <user> \
     --password "$TWISTCLI_PASSWORD" \
     --output-file "$SCAN_OUTPUT_FILE" \
     "$DOCKER_IMAGE"
@@ -41,6 +47,7 @@ if [ -f "$SCAN_OUTPUT_FILE" ]; then
     else
         echo "No vulnerabilities found in the scan results."
     fi
+    rm "$SCAN_OUTPUT_FILE"
 else
     echo "Failed to create the scan output file."
 fi

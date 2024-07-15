@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Function to show usage
+usage() {
+  echo "Usage: $0 {logs|describe}"
+  exit 1
+}
+
+# Check for correct number of arguments
+if [ "$#" -ne 1 ]; then
+  usage
+fi
+
+command=$1
+
+# Validate command argument
+if [[ "$command" != "logs" && "$command" != "describe" ]]; then
+  usage
+fi
+
+# Get the current namespace
+current_namespace=$(kubectl config view --minify --output 'jsonpath={..namespace}')
+if [ -z "$current_namespace" ]; then
+  current_namespace="default"
+fi
+
+# Print the current namespace
+echo "Current namespace: $current_namespace"
+echo
+
+# List pods and count them
+pod_list=$(kubectl get pods -n $current_namespace --no-headers -o custom-columns=":metadata.name")
+pod_count=$(echo "$pod_list" | wc -l)
+
+# Set fzf height dynamically based on pod count, with a maximum height of 40
+fzf_height=$((pod_count < 40 ? pod_count : 40))
+
+# Use fzf for selection with dynamic height
+selected_pod=$(echo "$pod_list" | fzf --height ${fzf_height} --prompt="Select a pod: ")
+
+# Check if a pod was selected
+if [ -z "$selected_pod" ]; then
+  echo "No pod selected. Exiting."
+  exit 1
+fi
+
+# Execute the appropriate kubectl command based on the argument
+if [ "$command" == "logs" ]; then
+  kubectl logs -n $current_namespace $selected_pod
+elif [ "$command" == "describe" ]; then
+  kubectl describe pod -n $current_namespace $selected_pod
+fi

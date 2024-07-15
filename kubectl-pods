@@ -29,7 +29,7 @@ echo "Current namespace: $current_namespace"
 echo
 
 # List pods, sort them, and count them
-pod_list=$(kubectl get pods -n $current_namespace --no-headers -o custom-columns=":metadata.name" | sort)
+pod_list=$(kubectl get pods -n $current_namespace --no-headers -o custom-columns=":metadata.name" | sort -r)
 pod_count=$(echo "$pod_list" | wc -l)
 
 # Set fzf height dynamically based on pod count, with a maximum height of 40

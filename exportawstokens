@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Define the full paths to the executables
+CLIP_EXE="/mnt/c/Windows/System32/clip.exe"
+POWERSHELL_EXE="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+
+# Function to copy to clipboard
+copy_to_clipboard() {
+    if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+        env | grep AWS | sed 's/^/export /' | "$CLIP_EXE"
+        echo "AWS environment variables copied to Windows clipboard."
+    else
+        echo "This script is designed to run in WSL."
+        exit 1
+    fi
+}
+
+# Function to paste from clipboard
+paste_from_clipboard() {
+    if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+        env_vars=$("$POWERSHELL_EXE" -Command "Get-Clipboard"| tr -d '\r')
+        if [ -n "$env_vars" ]; then
+            eval "$env_vars"
+            echo "AWS environment variables set from Windows clipboard."
+        else
+            echo "No environment variables found in Windows clipboard."
+        fi
+    else
+        echo "This script is designed to run in WSL."
+        exit 1
+    fi
+}
+
+if [ "$1" == "copy" ]; then
+    copy_to_clipboard
+elif [ "$1" == "paste" ]; then
+    paste_from_clipboard
+else
+    echo "Usage: $0 {copy|paste}"
+    exit 1
+fi

@@ -1,14 +1,24 @@
-#!/bin/bash                                                                                                                                                                                                                                                                                                                                                                                                                     # Function to show usage
+#!/bin/bash
+
+# Function to show usage
 usage() {
   echo "Usage: $0 {logs|describe}"
   exit 1
-}                                                                                                                                                                                                                                                                                                                                                                                                                               # Check for correct number of arguments
+}
+
+# Check for correct number of arguments
 if [ "$#" -ne 1 ]; then
   usage
-fi                                                                                                                                                                                                                                                                                                                                                                                                                              command=$1                                                                                                                                                                                                                                                                                                                                                                                                                      # Validate command argument
+fi
+
+command=$1
+
+# Validate command argument
 if [[ "$command" != "logs" && "$command" != "describe" ]]; then
   usage
-fi                                                                                                                                                                                                                                                                                                                                                                                                                              # Get the current namespace
+fi
+
+# Get the current namespace
 current_namespace=$(kubectl config view --minify --output 'jsonpath={..namespace}')
 if [ -z "$current_namespace" ]; then
   current_namespace="default"
@@ -18,21 +28,29 @@ fi
 echo "Current namespace: $current_namespace"
 echo
 
-# List pods, sort them, and count them
-pod_list=$(kubectl get pods -n $current_namespace --no-headers -o custom-columns=":metadata.name" | sort | nl -w 2 -s '. ')
-pod_count=$(echo "$pod_list" | wc -l)
+# List pods with their statuses, node names, and pod IPs
+pod_list=$(kubectl get pods -n $current_namespace -o custom-columns="NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName,IP:.status.podIP" --no-headers | sort)
+
+# Format pod list for fzf and add serial numbers
+formatted_pod_list=$(echo "$pod_list" | nl -w 2 -s '. ')
+
+# Count the number of pods
+pod_count=$(echo "$formatted_pod_list" | wc -l)
 
 # Set fzf height dynamically based on pod count, with a maximum height of 40
 fzf_height=$((pod_count < 40 ? pod_count : 40))
 
 # Use fzf for selection with dynamic height
-selected_pod=$(echo "$pod_list" | fzf --height ${fzf_height} --layout=reverse --prompt="Select a pod: ")
+selected_item=$(echo "$formatted_pod_list" | fzf --height ${fzf_height}% --layout=reverse --prompt="Select a pod: ")
 
 # Check if a pod was selected
-if [ -z "$selected_pod" ]; then
+if [ -z "$selected_item" ]; then
   echo "No pod selected. Exiting."
   exit 1
 fi
+
+# Extract pod name from selection
+selected_pod=$(echo "$selected_item" | awk '{print $2}')
 
 # Execute the appropriate kubectl command based on the argument
 if [ "$command" == "logs" ]; then

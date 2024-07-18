@@ -6,6 +6,7 @@ namespace=default
 
 cleanup() {
    if [ -n "$debugpod" ]; then
+       debugpod=$(kubectl get pods -n $namespace | awk '{print $1}' | grep "node-debugger-$debugpod")
        kubectl delete pod $debugpod -n $namespace
    fi
 }
@@ -48,6 +49,3 @@ debugpod=$(echo $selected_node | sed "s/node\///")
 
 # Debug the selected node
 kubectl debug $selected_node -it -n $namespace --image=$acr
-
-# Get the debug pod name
-debugpod=$(kubectl get pods -n $namespace | awk '{print $1}' | grep "node-debugger-$debugpod")

@@ -29,7 +29,7 @@ echo "Current namespace: $current_namespace"
 echo
 
 # List pods with their statuses, node names, and pod IPs
-pod_list=$(kubectl get pods -n $current_namespace -o custom-columns="NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName,IP:.status.podIP" --no-headers | sort)
+pod_list=$(kubectl get pods -n $current_namespace -o custom-columns="NAME:.metadata.name,STATUS:.status.containerStatuses[*].state.waiting.reason,NODE:.spec.nodeName,IP:.status.podIP" --no-headers | sort|sed 's/<none>/Running/')
 
 # Format pod list for fzf and add serial numbers
 formatted_pod_list=$(echo "$pod_list" | nl -w 2 -s '. ')
@@ -38,7 +38,7 @@ formatted_pod_list=$(echo "$pod_list" | nl -w 2 -s '. ')
 pod_count=$(echo "$formatted_pod_list" | wc -l)
 
 # Set fzf height dynamically based on pod count, with a maximum height of 40
-fzf_height=$((pod_count < 40 ? pod_count : 40))
+fzf_height=$((pod_count < 40 ? 40 : pod_count))
 
 # Use fzf for selection with dynamic height
 selected_item=$(echo "$formatted_pod_list" | fzf --height ${fzf_height}% --layout=reverse --prompt="Select a pod: ")

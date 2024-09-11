@@ -1,17 +1,11 @@
-#!/bin/bash
-
-# Function to show usage
+#!/bin/bash                                                                                                                                                                                                                                                                                                                                                                             # Function to show usage
 usage() {
   echo "Usage: $0 {logs|describe}"
   exit 1
-}
-
-# Check for correct number of arguments
+}                                                                                                                                                                                                                                                                                                                                                                                       # Check for correct number of arguments
 if [ "$#" -ne 1 ]; then
   usage
-fi
-
-command=$1
+fi                                                                                                                                                                                                                                                                                                                                                                                      command=$1
 
 # Validate command argument
 if [[ "$command" != "logs" && "$command" != "describe" ]]; then
@@ -29,7 +23,8 @@ echo "Current namespace: $current_namespace"
 echo
 
 # List pods with their statuses, node names, and pod IPs
-pod_list=$(kubectl get pods -n $current_namespace -o custom-columns="NAME:.metadata.name,STATUS:.status.containerStatuses[*].state.waiting.reason,NODE:.spec.nodeName,IP:.status.podIP" --no-headers | sort|sed 's/<none>/Running/')
+pod_list=$(kubectl get pods -o wide | awk 'NR==1 {print $1,$2,$3,$4,$5,$7} NR>1 {print $1,$2,$3,$4,$5, $7}' | column -t|sort)
+#$(kubectl get pods -n $current_namespace -o custom-columns="NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName,IP:.status.podIP" --no-headers | sort|sed 's/Failed/Evicted/')
 
 # Format pod list for fzf and add serial numbers
 formatted_pod_list=$(echo "$pod_list" | nl -w 2 -s '. ')
@@ -51,7 +46,8 @@ fi
 
 # Extract pod name from selection
 selected_pod=$(echo "$selected_item" | awk '{print $2}')
-
+echo "Selected Pod: $selected_pod"
+echo
 # Execute the appropriate kubectl command based on the argument
 if [ "$command" == "logs" ]; then
   kubectl logs -n $current_namespace $selected_pod

@@ -15,4 +15,7 @@ sudo update-ca-certificates
 # Inform the user
 echo "Certificate for $NAKED_URL has been added to the CA certificates."
 
+# Copy mozilla cert
+sudo cp /usr/local/share/ca-certificates/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
 rm "$NAKED_URL.crt"

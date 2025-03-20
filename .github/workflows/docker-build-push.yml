@@ -1,9 +1,7 @@
 name: Build, Scan, and Push Docker Image
 
 on:
-  push:
-    branches:
-      - main  # Change if your default branch is different
+  workflow_dispatch: 
 
 jobs:
   build-and-scan:

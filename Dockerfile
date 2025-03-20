@@ -12,7 +12,9 @@ RUN apk add --no-cache \
         bind-tools \
         curl \
         traceroute \
-        zlib
+        zlib \
+        tshark \
+        busybox-extras 
 
 RUN apk update && apk upgrade
 

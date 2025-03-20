@@ -1,9 +1,9 @@
-# Use a minimal Alpine image with a fixed version
-FROM amd64/alpine:3.20.1
+FROM amd64/alpine:latest
 
-# Install required tools
 RUN apk add --no-cache \
         ca-certificates \
+        \
+        # .NET dependencies
         krb5-libs \
         libgcc \
         libintl \
@@ -14,19 +14,12 @@ RUN apk add --no-cache \
         traceroute \
         zlib \
         tshark \
-        busybox-extras \
-        sudo  # Install sudo
+        busybox-extras 
 
-# Upgrade installed packages
 RUN apk update && apk upgrade
 
-# Create a non-root user
-RUN addgroup -S debuggroup && adduser -S debuguser -G debuggroup \
-    && echo "debuguser ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/debuguser  # Allow sudo without password
 
-# Copy entry script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Set entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+ENV \    
+    ASPNETCORE_URLS=http://+:80 \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true

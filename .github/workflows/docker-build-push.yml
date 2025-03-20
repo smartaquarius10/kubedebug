@@ -38,4 +38,4 @@ jobs:
       - name: Push Docker Image to Docker Hub
         if: success()  # Only push if Trivy scan is successful
         run: |
-          docker push your-dockerhub-username/your-repo:latest
+          docker push smartaquarius10/kubelogin:latest

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Prompt user for domain
+read -p "Enter the domain (e.g., apt.releases.hashicorp.com): " DOMAIN
+
+CERT_FILE="${DOMAIN}.crt"
+
+echo "🔍 Fetching full certificate chain for $DOMAIN..."
+
+# Fetch full cert chain
+echo | openssl s_client -showcerts -servername "$DOMAIN" -connect "$DOMAIN:443" 2>/dev/null \
+  | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/ { print $0; }' > "$CERT_FILE"
+
+if [ ! -s "$CERT_FILE" ]; then
+  echo "❌ Failed to retrieve certificate for $DOMAIN"
+  exit 1
+fi
+
+# Install to trusted certs
+echo "📥 Installing certificate to /usr/local/share/ca-certificates/"
+sudo cp "$CERT_FILE" /usr/local/share/ca-certificates/
+
+# Update CA trust store
+echo "🔄 Updating CA certificates..."
+sudo update-ca-certificates
+
+# Optional: Check if /etc/ssl/certs/ca-certificates.crt exists
+if [ ! -f /etc/ssl/certs/ca-certificates.crt ]; then
+  echo "⚠️  Warning: /etc/ssl/certs/ca-certificates.crt not found."
+  echo "You may want to manually copy or link it if required by older tools:"
+  echo "    sudo ln -s /etc/ssl/certs/ca-certificates.crt /path/to/expected/location"
+fi
+
+# Clean up
+rm "$CERT_FILE"
+
+echo "✅ Certificate for $DOMAIN successfully trusted."

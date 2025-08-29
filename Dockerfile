@@ -17,8 +17,9 @@ RUN apk add --no-cache \
         busybox-extras 
 
 RUN apk update && apk upgrade
-
-
+RUN wget -O /usr/local/bin/hey https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 \
+    && chmod +x /usr/local/bin/hey
+    
 ENV \    
     ASPNETCORE_URLS=http://+:80 \
     DOTNET_RUNNING_IN_CONTAINER=true \

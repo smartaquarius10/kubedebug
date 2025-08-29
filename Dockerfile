@@ -17,8 +17,11 @@ RUN apk add --no-cache \
         busybox-extras 
 
 RUN apk update && apk upgrade
-RUN wget -O /usr/local/bin/hey https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 \
-    && chmod +x /usr/local/bin/hey
+RUN apk add --no-cache wget jq tar \
+ && LATEST=$(wget -qO- https://api.github.com/repos/tsenart/vegeta/releases/latest | jq -r .tag_name) \
+ && wget -q https://github.com/tsenart/vegeta/releases/download/${LATEST}/vegeta_${LATEST#v}_linux_amd64.tar.gz -O /tmp/vegeta.tar.gz \
+ && tar -xzf /tmp/vegeta.tar.gz -C /usr/local/bin vegeta \
+ && rm /tmp/vegeta.tar.gz
     
 ENV \    
     ASPNETCORE_URLS=http://+:80 \

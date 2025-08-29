@@ -31,6 +31,7 @@ jobs:
         with:
           image-ref: 'smartaquarius10/kubelogin:latest'
           format: 'table'
+          severity: 'CRITICAL'
           exit-code: '1'  # Fails pipeline if vulnerabilities are found
           ignore-unfixed: true
           vuln-type: 'os,library'

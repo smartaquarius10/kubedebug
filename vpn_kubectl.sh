@@ -1,4 +1,4 @@
-# Define the tunnel function
+# Define the tunnel function in .bashrc
 refresh_tunnel() {
     local PORT=8001 # Change this to 8002 or 8003 for your other users
     local PID_FILE="/tmp/k8s-proxy-$USER.pid"

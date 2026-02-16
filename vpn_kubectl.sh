@@ -1,33 +1,35 @@
-# Define the tunnel function in .bashrc
+# Add this to .bashrc
+# 1. Define your environment-specific port here
+# Sandbox: 8001 | Preprod: 8002 | Prod: 8003
+export K_PORT=8003 
+
+# 2. The Reusable Tunnel Manager
 refresh_tunnel() {
-    local PORT=8001 # Change this to 8002 or 8003 for your other users
     local PID_FILE="/tmp/k8s-proxy-$USER.pid"
 
-    # 1. Precise Kill (PID)
+    # Precise Kill using PID
     if [ -f "$PID_FILE" ]; then
         kill $(cat "$PID_FILE") > /dev/null 2>&1
         rm "$PID_FILE"
+    else
+        # Fallback Safety Catch
+        fuser -k $K_PORT/tcp > /dev/null 2>&1
     fi
 
-    # 2. Safety Catch (Port-based)
-    # If something is still hanging on the port, fuser will clear it
-    fuser -k $PORT/tcp > /dev/null 2>&1
-
-    # 3. Start the new background tunnel
-    kubectl proxy --port=$PORT --keepalive=5m & 
+    # Start the tunnel silently in the background
+    (command kubectl proxy --port=$K_PORT --keepalive=5m > /dev/null 2>&1 &)
+    
+    # Save the new PID
     echo $! > "$PID_FILE"
 
-    echo "🚀 Tunnel established for: $(kubectl config current-context) on port $PORT"
+    echo "✅ Tunnel established for: $(command kubectl config current-context) [Port: $K_PORT]"
 }
 
-# The kubectx wrapper
+# 3. The Automation Wrapper
 kubectx() {
-    # Run the real kubectx tool first with whatever arguments you passed
     command kubectx "$@"
-    
-    # After the context switches, refresh the tunnel automatically
     refresh_tunnel
 }
 
-# Your clean alias
-alias k='kubectl --server=http://localhost:8001'
+# 4. The Main Alias (using the global variable)
+alias kubectl='kubecolor --server=http://localhost:$K_PORT'

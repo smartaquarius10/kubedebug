@@ -24,8 +24,8 @@ RUN apk add --no-cache wget jq tar \
  && rm /tmp/vegeta.tar.gz \
 
 RUN IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name) \
-  && IG_ARCH=amd64
-  && curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | tar -C /usr/local/bin -xzf - ig  
+  && IG_ARCH=amd64 \
+  && curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | tar -C /usr/local/bin -xzf - ig
     
 ENV \    
     ASPNETCORE_URLS=http://+:80 \

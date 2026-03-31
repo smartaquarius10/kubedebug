@@ -1,5 +1,6 @@
 # kubedebug
 [![Build, Scan, and Push Docker Image](https://github.com/smartaquarius10/kubedebug/actions/workflows/docker-build-push.yml/badge.svg)](https://github.com/smartaquarius10/kubedebug/actions/workflows/docker-build-push.yml)
+
 This repository contains scripts to ssh into kubernetes nodes
 
 For debug kubernetes file run 

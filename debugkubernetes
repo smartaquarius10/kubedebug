@@ -1,51 +1,46 @@
 #!/bin/bash
-
-#acr=mcr.microsoft.com/dotnet/runtime-deps:6.0
+export GUM_CHOOSE_CURSOR="▸ "
+export GUM_CHOOSE_CURSOR_FOREGROUND="#34D399"
+export GUM_CHOOSE_HEADER_FOREGROUND="#10B981"
+export GUM_CHOOSE_SELECTED_FOREGROUND="#A7F3D0"
 acr=smartaquarius10/kubelogin:latest
-namespace=default
+namespace=${1:-default}
 
 cleanup() {
-   if [ -n "$debugpod" ]; then
-       debugpod=$(kubectl get pods -n $namespace | awk '{print $1}' | grep "node-debugger-$debugpod")
-       kubectl delete pod $debugpod -n $namespace
-   fi
+    if [ -n "$debugpod" ]; then
+        debugpod=$(kubectl get pods -n "$namespace" | awk '{print $1}' | grep "node-debugger-$debugpod")
+        [ -n "$debugpod" ] && kubectl delete pod "$debugpod" -n "$namespace"
+    fi
 }
-
-# Set traps
-trap 'handle_exit' SIGINT
+trap 'trap - EXIT; cleanup; exit 0' SIGINT
 trap 'cleanup' EXIT
 
-handle_exit() {
-    # Reset the EXIT trap to prevent cleanup from running again
-    trap - EXIT
-    cleanup
-    exit 0
-}
-
-
 echo
-echo "Login into nodes"
+echo "Login into nodes (namespace: $namespace)"
 echo
 
-# Get node names
-names=$(kubectl get nodes -o name)
+# Get node names, stripped of "node/" prefix for display
+mapfile -t nodes < <(kubectl get nodes -o name | sed 's|node/||')
 
-# Count the number of nodes
-node_count=$(echo "$names" | wc -l)
-
-# Set the height for fzf dynamically based on the number of nodes
-fzf_height=$((node_count > 10 ? 20 : node_count))
-
-# Use fzf to select a node name
-selected_node=$(echo "$names" | fzf --height $fzf_height --border --prompt="Select a node: ")
-
-if [[ -z "$selected_node" ]]; then
-  echo "No node selected. Exiting..."
-  exit 1
+if [ ${#nodes[@]} -eq 0 ]; then
+    echo "No nodes found."
+    exit 1
 fi
 
-# Remove "node/" prefix from the selected node
-debugpod=$(echo $selected_node | sed "s/node\///")
+if ! command -v gum &> /dev/null; then
+    echo "gum not installed. Falling back to numbered list."
+    PS3=$'\nSelect a node (number): '
+    select selected_node in "${nodes[@]}"; do
+        [[ -n "$selected_node" ]] && break
+    done
+else
+    selected_node=$(printf '%s\n' "${nodes[@]}" | gum choose --header="Select a node:" --height=15)
+fi
 
-# Debug the selected node
-kubectl debug $selected_node -it -n $namespace --image=$acr
+if [[ -z "$selected_node" ]]; then
+    echo "No node selected. Exiting..."
+    exit 1
+fi
+
+debugpod=$selected_node
+kubectl debug "node/$selected_node" -it -n "$namespace" --image="$acr"

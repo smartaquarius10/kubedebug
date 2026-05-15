@@ -3,7 +3,10 @@ name: Build, Scan, and Push Docker Image
 on:
   push:
     branches:
-      - main 
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   build-and-scan:
@@ -11,13 +14,19 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd 
-
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # 1. NEW: Scan the Dockerfile for bad practices before we even build
+      - name: Lint Dockerfile (Hadolint)
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error #warning 
+          
       - name: Set Up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -27,11 +36,11 @@ jobs:
           docker build -t smartaquarius10/kubelogin:latest .
 
       - name: Scan Docker Image with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: 'smartaquarius10/kubelogin:latest'
           format: 'table'
-          severity: 'CRITICAL'
+          severity: 'CRITICAL,HIGH'
           exit-code: '1'  # Fails pipeline if vulnerabilities are found
           ignore-unfixed: true
           vuln-type: 'os,library'
@@ -43,12 +52,25 @@ jobs:
           scanners: 'secret'
           exit-code: '1'
 
-      - name: Malware scan (ClamAV)
+      - name: Malware scan (ClamAV - Defense in Depth)
         run: |
-          docker save smartaquarius10/kubelogin:latest -o /tmp/image.tar
-          mkdir -p /tmp/unpacked && tar -xf /tmp/image.tar -C /tmp/unpacked
+          echo "Flattening Docker image for accurate scanning..."
+          # Create a dummy container (does not run it)
+          CONTAINER_ID=$(docker create smartaquarius10/kubelogin:latest)
+          
+          # Export the flattened filesystem (exactly as it looks at runtime)
+          docker export $CONTAINER_ID -o /tmp/flattened.tar
+          docker rm $CONTAINER_ID
+          
+          # Extract it
+          mkdir -p /tmp/unpacked
+          # || true prevents the pipeline from failing on harmless symlink warnings during extraction
+          tar -xf /tmp/flattened.tar -C /tmp/unpacked || true 
+          
+          echo "Running ClamAV..."
+          # We run freshclam to get today's virus database, then scan the flattened files
           docker run --rm -v /tmp/unpacked:/scan clamav/clamav:latest \
-            clamscan -r --infected --no-summary /scan
+            sh -c "freshclam && clamscan -r --infected --no-summary /scan"
             
       - name: Push Docker Image to Docker Hub
         if: success()  # Only push if Trivy scan is successful

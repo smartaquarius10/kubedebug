@@ -1,7 +1,7 @@
 
 FROM amd64/alpine:3.22.4
 
-ARG INSTALL_IG="true"
+ARG INSTALL_IG="false"
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 

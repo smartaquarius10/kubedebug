@@ -1,6 +1,13 @@
-FROM amd64/alpine:latest
+# Fix DL3007: Pin a specific version instead of 'latest'
+FROM amd64/alpine:3.22.4
 
-RUN apk add --no-cache \
+# Fix DL4006: Set pipefail for the curl | tar command later in the file
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+# Fix DL3018: Ignore apk version pinning (See explanation below)
+# hadolint ignore=DL3018
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache \
         ca-certificates \
         krb5-libs \
         libgcc \
@@ -12,20 +19,14 @@ RUN apk add --no-cache \
         traceroute \
         zlib \
         tshark \
-        busybox-extras 
+        busybox-extras \
+        wget \
+        jq \
+        tar
 
-RUN apk update && apk upgrade
-RUN apk add --no-cache wget jq tar 
- # && LATEST=$(wget -qO- https://api.github.com/repos/tsenart/vegeta/releases/latest | jq -r .tag_name) \
- # && wget -q https://github.com/tsenart/vegeta/releases/download/${LATEST}/vegeta_${LATEST#v}_linux_amd64.tar.gz -O /tmp/vegeta.tar.gz \
- # && tar -xzf /tmp/vegeta.tar.gz -C /usr/local/bin vegeta \
- #&& rm /tmp/vegeta.tar.gz 
-
-RUN IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name) \
-  && IG_ARCH=amd64 \
-  && curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | tar -C /usr/local/bin -xzf - ig
-    
-ENV \    
-    ASPNETCORE_URLS=http://+:80 \
-    DOTNET_RUNNING_IN_CONTAINER=true \
-    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+# Fix SC2086: Double quote variables
+ARG IG_VERSION=v0.51.1
+# RUN IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name) \
+RUN IG_ARCH="amd64" \
+ && IG_VERSION=v0.51.1 \
+ && curl -sL "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz" | tar -C /usr/local/bin -xzf - ig

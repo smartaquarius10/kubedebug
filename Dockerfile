@@ -1,3 +1,11 @@
+# --- STAGE 1: Build the 'ig' binary securely ---
+# Use a patched, secure Go compiler (1.26.3 or newer)
+FROM golang:1.26-alpine AS builder
+
+# Compile the latest Inspektor Gadget CLI from source
+# This bakes the secure Go standard library into the binary
+RUN go install github.com/inspektor-gadget/inspektor-gadget/cmd/ig@latest
+
 # Fix DL3007: Pin a specific version instead of 'latest'
 FROM amd64/alpine:3.22.4
 
@@ -24,9 +32,11 @@ RUN apk update && apk upgrade --no-cache && \
         jq \
         tar
 
+COPY --from=builder /go/bin/ig /usr/local/bin/ig
+
 # Fix SC2086: Double quote variables
-ARG IG_VERSION=v0.51.1
+# ARG IG_VERSION=v0.51.1
 # RUN IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name) \
-RUN IG_ARCH="amd64" \
- && IG_VERSION=v0.51.1 \
- && curl -sL "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz" | tar -C /usr/local/bin -xzf - ig
+# RUN IG_ARCH="amd64" \
+# && IG_VERSION=v0.51.1 \
+# && curl -sL "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz" | tar -C /usr/local/bin -xzf - ig

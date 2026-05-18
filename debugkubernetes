@@ -34,7 +34,7 @@ if ! command -v gum &> /dev/null; then
         [[ -n "$selected_node" ]] && break
     done
 else
-    selected_node=$(printf '%s\n' "${nodes[@]}" | gum choose --header="Select a node:" --height=15)
+    selected_node=$(printf '%s\n' "${nodes[@]}" | gum filter --header="Select a node:" --height=15)
 fi
 
 if [[ -z "$selected_node" ]]; then

@@ -21,7 +21,8 @@ RUN apk update && apk upgrade --no-cache && \
         busybox-extras \
         wget \
         jq \
-        tar
+        tar \
+        openssl
 
 RUN if [ "$INSTALL_IG" = "true" ]; then \
         echo "Installing Inspektor Gadget..." && \

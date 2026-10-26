@@ -37,9 +37,10 @@ jobs:
           docker build -t smartaquarius10/kubelogin:latest .
 
       - name: Scan Docker Image with Trivy
-        uses: aquasecurity/trivy-action@e713f67f7d54decdcd9b3132c9751833dcced698 # v0.76.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.76.1
         with:
           image-ref: 'smartaquarius10/kubelogin:latest'
+          version: v0.76.1
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'  # Fails pipeline if vulnerabilities are found
